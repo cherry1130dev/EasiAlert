@@ -22,6 +22,7 @@ export const Header: React.FC = () => {
         backdropFilter: 'blur(16px)',
         position: 'sticky',
         top: 0,
+        flexShrink: 0,
         zIndex: 40,
       }}
     >

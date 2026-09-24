@@ -99,6 +99,8 @@ export const ContactFormModal: React.FC<ContactFormModalProps> = ({
         style={{
           width: '100%',
           maxWidth: 420,
+          maxHeight: '88vh',
+          overflowY: 'auto',
           padding: '24px',
           background: '#0d1424',
           border: '1px solid rgba(255, 255, 255, 0.15)',
