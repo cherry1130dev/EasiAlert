@@ -100,8 +100,9 @@ button, input, select, textarea {
 .app-content {
   flex: 1;
   padding: 16px;
-  padding-bottom: calc(var(--nav-height) + 24px);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 36px);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 
@@ -188,41 +189,45 @@ button, input, select, textarea {
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: var(--nav-height);
-  background: rgba(11, 15, 25, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+  background: rgba(11, 15, 25, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-subtle);
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: 50;
   padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  padding: 8px 12px;
+  padding: 6px 14px;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 62px;
 }
 
 .nav-item.active {
   color: #60a5fa;
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(59, 130, 246, 0.16);
+  font-weight: 700;
 }
 
 .nav-item:active {
-  transform: scale(0.95);
+  transform: scale(0.93);
 }
 
 /* Button styles */

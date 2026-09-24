@@ -69,8 +69,8 @@ const MainLayout: React.FC = () => {
     touchStartPos.current = null;
     touchLastPos.current = null;
 
-    // Must be predominantly horizontal gesture with minimum threshold of 45px
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 45) {
+    // Must be predominantly horizontal gesture with minimum threshold of 60px and clear horizontal dominance
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 1.6 && Math.abs(deltaX) >= 60) {
       const currentIndex = TAB_ORDER.indexOf(currentTab);
       if (deltaX < 0) {
         // Swiped Left -> Move to Next Tab

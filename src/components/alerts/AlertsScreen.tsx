@@ -9,6 +9,9 @@ import {
   Phone,
   MessageCircle,
   Paintbrush,
+  Repeat,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { APP_THEMES, type AppThemeId } from '../../types/theme';
@@ -424,14 +427,217 @@ export const AlertsScreen: React.FC = () => {
         </div>
       </CollapsibleCard>
 
-      {/* 4. Alert Parameters (Countdown & Timers) */}
+      {/* 4. Alert Parameters (Countdown, Iterations & Timers) */}
       <CollapsibleCard
         title="Emergency Execution Parameters"
-        subtitle={`Grace: ${activeProfile.gracePeriodSeconds}s • Repeat: ${!activeProfile.isRepeatEnabled ? 'None' : activeProfile.repeatIntervalSeconds + 's'}`}
+        subtitle={`Cycles: ${activeProfile.maxRepeats === 1 ? '1x Single' : activeProfile.maxRepeats === -1 ? '∞ Unlimited' : activeProfile.maxRepeats + 'x Blasts'} • Grace: ${activeProfile.gracePeriodSeconds}s • Interval: ${activeProfile.repeatIntervalSeconds}s`}
         icon={<Clock size={18} color="var(--theme-primary)" />}
+        defaultExpanded={true}
       >
-        {/* Grace Period */}
-        <div style={{ marginBottom: 16 }}>
+        {/* A. Alert Iterations Limit Control */}
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Repeat size={15} color="var(--theme-primary)" />
+              <span style={{ fontSize: '0.84rem', fontWeight: 700 }}>Alert Blast Iterations Limit</span>
+            </div>
+            <span
+              style={{
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                padding: '2px 10px',
+                borderRadius: 12,
+                background: 'var(--theme-badge-bg)',
+                color: 'var(--theme-badge-color)',
+                border: '1px solid var(--theme-border)',
+              }}
+            >
+              {activeProfile.maxRepeats === 1
+                ? '1x (Single Alert)'
+                : activeProfile.maxRepeats === -1
+                ? '∞ Unlimited Cycles'
+                : `${activeProfile.maxRepeats} Cycles`}
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>
+            Configure how many times the emergency SMS cycle repeats with refreshed GPS coordinates.
+          </p>
+
+          {/* Quick Selection Chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {[
+              { val: 1, label: '1x Single' },
+              { val: 2, label: '2x' },
+              { val: 3, label: '3x' },
+              { val: 4, label: '4x' },
+              { val: 5, label: '5x' },
+              { val: 10, label: '10x' },
+              { val: -1, label: '∞ Unlimited' },
+            ].map((chip) => {
+              const isSelected = activeProfile.maxRepeats === chip.val;
+              return (
+                <button
+                  key={chip.val}
+                  type="button"
+                  onClick={() => {
+                    if (chip.val === 1) {
+                      updateActiveProfile({ ...activeProfile, maxRepeats: 1, isRepeatEnabled: false });
+                    } else {
+                      updateActiveProfile({ ...activeProfile, maxRepeats: chip.val, isRepeatEnabled: true });
+                    }
+                  }}
+                  className="btn btn-sm"
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: isSelected ? 800 : 500,
+                    padding: '5px 11px',
+                    borderRadius: 8,
+                    background: isSelected ? 'var(--theme-primary)' : 'rgba(255, 255, 255, 0.05)',
+                    color: isSelected ? '#000000' : 'var(--text-secondary)',
+                    border: isSelected ? '1px solid var(--theme-primary)' : '1px solid var(--border-subtle)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Stepper & Slider Control */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--border-subtle)',
+              marginBottom: 10,
+            }}
+          >
+            <button
+              type="button"
+              disabled={activeProfile.maxRepeats === 1}
+              onClick={() => {
+                const current = activeProfile.maxRepeats;
+                const nextVal = current === -1 ? 10 : Math.max(1, current - 1);
+                updateActiveProfile({
+                  ...activeProfile,
+                  maxRepeats: nextVal,
+                  isRepeatEnabled: nextVal !== 1,
+                });
+              }}
+              className="btn btn-outline btn-sm"
+              style={{
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+                opacity: activeProfile.maxRepeats === 1 ? 0.4 : 1,
+              }}
+              title="Decrease iterations"
+            >
+              <Minus size={15} />
+            </button>
+
+            <div style={{ flex: 1 }}>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                disabled={activeProfile.maxRepeats === -1}
+                value={activeProfile.maxRepeats === -1 ? 10 : activeProfile.maxRepeats}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  updateActiveProfile({
+                    ...activeProfile,
+                    maxRepeats: val,
+                    isRepeatEnabled: val !== 1,
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  opacity: activeProfile.maxRepeats === -1 ? 0.35 : 1,
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.64rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                <span>1x (Single)</span>
+                <span>2x</span>
+                <span>3x</span>
+                <span>4x</span>
+                <span>5x</span>
+                <span>10x (Max)</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={activeProfile.maxRepeats === -1}
+              onClick={() => {
+                const current = activeProfile.maxRepeats;
+                const nextVal = current >= 10 ? -1 : current + 1;
+                updateActiveProfile({
+                  ...activeProfile,
+                  maxRepeats: nextVal,
+                  isRepeatEnabled: true,
+                });
+              }}
+              className="btn btn-outline btn-sm"
+              style={{
+                width: 32,
+                height: 32,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 8,
+                opacity: activeProfile.maxRepeats === -1 ? 0.4 : 1,
+              }}
+              title="Increase iterations"
+            >
+              <Plus size={15} />
+            </button>
+          </div>
+
+          {/* Dynamic Explanatory Callout */}
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: 8,
+              fontSize: '0.72rem',
+              lineHeight: 1.4,
+              background: 'rgba(255, 255, 255, 0.03)',
+              borderLeft: '3px solid var(--theme-primary)',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {activeProfile.maxRepeats === 1 && (
+              <span>
+                <strong style={{ color: 'var(--theme-primary)' }}>Single Alert:</strong> Dispatches emergency SMS with current GPS location once to contacts, then completes immediately without repeating.
+              </span>
+            )}
+            {activeProfile.maxRepeats > 1 && (
+              <span>
+                <strong style={{ color: 'var(--theme-primary)' }}>{activeProfile.maxRepeats} Cycles:</strong> Dispatches initial emergency SMS immediately, followed by <strong>{activeProfile.maxRepeats - 1} repeat blast{activeProfile.maxRepeats > 2 ? 's' : ''}</strong> every {activeProfile.repeatIntervalSeconds}s with live updated GPS coordinates.
+              </span>
+            )}
+            {activeProfile.maxRepeats === -1 && (
+              <span>
+                <strong style={{ color: 'var(--theme-primary)' }}>Continuous Blast (∞):</strong> Repeatedly dispatches emergency SMS with fresh GPS location every {activeProfile.repeatIntervalSeconds}s indefinitely until you manually dismiss in the app.
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* B. Grace Period */}
+        <div style={{ marginBottom: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Cancellation Grace Period</span>
             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--theme-primary)' }}>
@@ -454,33 +660,35 @@ export const AlertsScreen: React.FC = () => {
           />
         </div>
 
-        {/* Repeat Alert Interval */}
+        {/* C. Repeat Alert Interval */}
         <div style={{ marginBottom: 16, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Repeat Alert Interval</span>
             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--theme-primary)' }}>
-              {!activeProfile.isRepeatEnabled
-                ? 'One-Time Only'
+              {activeProfile.maxRepeats === 1
+                ? 'N/A (Single Cycle)'
                 : `Every ${activeProfile.repeatIntervalSeconds}s`}
             </span>
           </div>
           <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-            Periodically re-sends updated live GPS location to contacts until dismissed
+            {activeProfile.maxRepeats === 1
+              ? 'Repeat interval will take effect when cycle limit is set to 2 or more.'
+              : 'Periodically re-sends updated live GPS location to contacts between cycles.'}
           </p>
           <input
             type="range"
             min="15"
             max="180"
             step="15"
+            disabled={activeProfile.maxRepeats === 1}
             value={activeProfile.repeatIntervalSeconds}
             onChange={(e) =>
               updateActiveProfile({
                 ...activeProfile,
                 repeatIntervalSeconds: Number(e.target.value),
-                isRepeatEnabled: true,
               })
             }
-            style={{ width: '100%' }}
+            style={{ width: '100%', opacity: activeProfile.maxRepeats === 1 ? 0.4 : 1 }}
           />
         </div>
 

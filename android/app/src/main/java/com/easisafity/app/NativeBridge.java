@@ -12,6 +12,10 @@ import android.provider.ContactsContract;
 import android.telephony.SmsManager;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
+import android.bluetooth.BluetoothAdapter;
+import android.content.Context;
+import android.location.LocationManager;
+import android.provider.Settings;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import org.json.JSONArray;
@@ -106,6 +110,8 @@ public class NativeBridge {
             }
             obj.put("notifications", notifGranted);
             obj.put("allGranted", hasAllPermissions());
+            obj.put("isBluetoothOn", isBluetoothEnabled());
+            obj.put("isLocationOn", isLocationEnabled());
 
             return obj.toString();
         } catch (Exception e) {
@@ -301,5 +307,103 @@ public class NativeBridge {
         }
 
         return contactsArray.toString();
+    }
+
+    @JavascriptInterface
+    public boolean isBluetoothEnabled() {
+        try {
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            return adapter != null && adapter.isEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, "isBluetoothEnabled error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @JavascriptInterface
+    public void requestEnableBluetooth() {
+        activity.runOnUiThread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        activity,
+                        new String[]{Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN},
+                        REQUEST_CODE_PERMISSIONS
+                    );
+                    return;
+                }
+                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                if (adapter != null && !adapter.isEnabled()) {
+                    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                    enableBtIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    activity.startActivity(enableBtIntent);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "requestEnableBluetooth error: " + e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public boolean isLocationEnabled() {
+        try {
+            LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
+            if (lm == null) return false;
+            return lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception e) {
+            Log.w(TAG, "isLocationEnabled error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @JavascriptInterface
+    public void openLocationSettings() {
+        activity.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(intent);
+            } catch (Exception e) {
+                Log.e(TAG, "openLocationSettings error: " + e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void startEmergencyService() {
+        activity.runOnUiThread(() -> {
+            try {
+                if (hasBluetoothPermission(activity)) {
+                    Intent serviceIntent = new Intent(activity, EmergencyForegroundService.class);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        activity.startForegroundService(serviceIntent);
+                    } else {
+                        activity.startService(serviceIntent);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "startEmergencyService failed safely: " + e.getMessage());
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void stopEmergencyService() {
+        activity.runOnUiThread(() -> {
+            try {
+                Intent serviceIntent = new Intent(activity, EmergencyForegroundService.class);
+                activity.stopService(serviceIntent);
+            } catch (Exception e) {
+                Log.e(TAG, "stopEmergencyService error: " + e.getMessage());
+            }
+        });
+    }
+
+    public static boolean hasBluetoothPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
     }
 }

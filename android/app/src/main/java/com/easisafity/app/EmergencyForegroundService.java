@@ -52,10 +52,32 @@ public class EmergencyForegroundService extends Service {
 
         Notification notification = builder.build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                boolean hasBtPerm = true;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    hasBtPerm = checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                }
+                if (hasBtPerm) {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
+                } else {
+                    android.util.Log.w("EmergencyForegroundService", "Bluetooth permissions missing, stopping foreground service safely");
+                    startForeground(NOTIFICATION_ID, notification);
+                    stopForeground(true);
+                    stopSelf();
+                    return START_NOT_STICKY;
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("EmergencyForegroundService", "startForeground safely caught exception: " + e.getMessage());
+            try {
+                startForeground(NOTIFICATION_ID, notification);
+                stopForeground(true);
+            } catch (Exception ignored) {}
+            stopSelf();
+            return START_NOT_STICKY;
         }
 
         return START_STICKY;

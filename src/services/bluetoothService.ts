@@ -28,6 +28,7 @@ declare global {
         failure: (err: unknown) => void
       ) => void;
       connect: (address: string, success: () => void, failure: (err: unknown) => void) => void;
+      connectInsecure?: (address: string, success: () => void, failure: (err: unknown) => void) => void;
       disconnect: (success: () => void, failure: () => void) => void;
       isConnected: (success: () => void, failure: () => void) => void;
       subscribe: (delimiter: string, success: (data: string) => void, failure: (err: unknown) => void) => void;
@@ -176,60 +177,119 @@ export class BluetoothService {
    * Connect to a Bluetooth device (HC-05 Classic or ESP32 BLE) with Online/Offline status tracking
    */
   public async connectDevice(device: BluetoothDevice): Promise<boolean> {
+    // 0. Ensure Bluetooth adapter is switched ON on the phone
+    if (typeof window !== 'undefined' && window.AndroidBridge?.isBluetoothEnabled) {
+      if (!window.AndroidBridge.isBluetoothEnabled()) {
+        this.setStatus('DISCONNECTED', null);
+        this.logSerial('SYSTEM', '⚠️ Bluetooth is turned OFF on your phone. Please turn ON Bluetooth.');
+        window.AndroidBridge.requestEnableBluetooth?.();
+        return false;
+      }
+    }
+
     this.setStatus('CONNECTING', device);
     this.logSerial('SYSTEM', `Connecting to ${device.name} [${device.address || 'GATT'}]...`);
 
-    // 1. Android Native Bluetooth Classic (HC-05) via cordova-plugin-bluetooth-serial
+    // 1. Android Native Bluetooth Classic (HC-05, ESP32, BioWatch) via cordova-plugin-bluetooth-serial
     if (typeof window !== 'undefined' && window.bluetoothSerial && device.address) {
       return new Promise<boolean>((resolve) => {
+        let isSettled = false;
+
+        const onConnected = () => {
+          if (isSettled) return;
+          isSettled = true;
+          this.setStatus('CONNECTED', device);
+          this.logSerial('SYSTEM', `ONLINE: Connected to ${device.name} [${device.address}]`);
+
+          // Receiver callback handling both string chunks and raw bytes
+          const onRawData = (data: string | ArrayBuffer) => {
+            let str = '';
+            if (typeof data === 'string') {
+              str = data;
+            } else if (data instanceof ArrayBuffer) {
+              const bytes = new Uint8Array(data);
+              str = Array.from(bytes)
+                .map((b) => String.fromCharCode(b))
+                .join('');
+            }
+            if (str) {
+              this.processIncomingChunk(str);
+            }
+          };
+
+          // Subscribe to raw data if supported so it doesn't wait for '\n'
+          if (typeof window.bluetoothSerial?.subscribeRawData === 'function') {
+            window.bluetoothSerial.subscribeRawData(
+              (data: ArrayBuffer) => onRawData(data),
+              (err: unknown) => {
+                this.logSerial('SYSTEM', `Stream error: ${String(err)}`);
+                this.setStatus('DISCONNECTED', null);
+              }
+            );
+          } else {
+            // Subscribe with empty string delimiter to receive all raw chunks as they arrive
+            window.bluetoothSerial?.subscribe(
+              '',
+              (data: string) => onRawData(data),
+              (err: unknown) => {
+                this.logSerial('SYSTEM', `Stream error: ${String(err)}`);
+                this.setStatus('DISCONNECTED', null);
+              }
+            );
+          }
+          resolve(true);
+        };
+
+        const tryInsecure = () => {
+          if (typeof window.bluetoothSerial?.connectInsecure === 'function') {
+            this.logSerial('SYSTEM', `Attempting fallback RFCOMM channel for ${device.name}...`);
+            window.bluetoothSerial.connectInsecure(
+              device.address!,
+              () => {
+                clearTimeout(safetyTimeout);
+                onConnected();
+              },
+              (err2: unknown) => {
+                if (isSettled) return;
+                isSettled = true;
+                clearTimeout(safetyTimeout);
+                this.setStatus('ERROR', null);
+                this.logSerial('SYSTEM', `OFFLINE: Connection failed for ${device.name}: ${String(err2)}`);
+                resolve(false);
+              }
+            );
+          } else {
+            if (isSettled) return;
+            isSettled = true;
+            clearTimeout(safetyTimeout);
+            this.setStatus('ERROR', null);
+            this.logSerial('SYSTEM', `OFFLINE: Connection failed for ${device.name}`);
+            resolve(false);
+          }
+        };
+
+        // Safety timeout after 12s so UI never stays stuck in Pairing...
+        const safetyTimeout = setTimeout(() => {
+          if (!isSettled) {
+            isSettled = true;
+            this.setStatus('DISCONNECTED', null);
+            this.logSerial('SYSTEM', `⚠️ Connection attempt timed out for ${device.name}. Ensure device is ON and in range.`);
+            try {
+              window.bluetoothSerial?.disconnect(() => {}, () => {});
+            } catch {}
+            resolve(false);
+          }
+        }, 12000);
+
         window.bluetoothSerial?.connect(
           device.address!,
           () => {
-            this.setStatus('CONNECTED', device);
-            this.logSerial('SYSTEM', `ONLINE: Connected to ${device.name} via RFCOMM SPP [${device.address}]`);
-
-            // Receiver callback handling both string chunks and raw bytes
-            const onRawData = (data: string | ArrayBuffer) => {
-              let str = '';
-              if (typeof data === 'string') {
-                str = data;
-              } else if (data instanceof ArrayBuffer) {
-                const bytes = new Uint8Array(data);
-                str = Array.from(bytes)
-                  .map((b) => String.fromCharCode(b))
-                  .join('');
-              }
-              if (str) {
-                this.processIncomingChunk(str);
-              }
-            };
-
-            // Subscribe to raw data if supported so it doesn't wait for '\n'
-            if (typeof window.bluetoothSerial?.subscribeRawData === 'function') {
-              window.bluetoothSerial.subscribeRawData(
-                (data: ArrayBuffer) => onRawData(data),
-                (err: unknown) => {
-                  this.logSerial('SYSTEM', `Stream error: ${String(err)}`);
-                  this.setStatus('DISCONNECTED', null);
-                }
-              );
-            } else {
-              // Subscribe with empty string delimiter to receive all raw chunks as they arrive
-              window.bluetoothSerial?.subscribe(
-                '',
-                (data: string) => onRawData(data),
-                (err: unknown) => {
-                  this.logSerial('SYSTEM', `Stream error: ${String(err)}`);
-                  this.setStatus('DISCONNECTED', null);
-                }
-              );
-            }
-            resolve(true);
+            clearTimeout(safetyTimeout);
+            onConnected();
           },
           (err: unknown) => {
-            this.setStatus('ERROR', null);
-            this.logSerial('SYSTEM', `OFFLINE: Connection failed: ${String(err)}`);
-            resolve(false);
+            this.logSerial('SYSTEM', `Standard connection note (${String(err)}), trying alternative SPP channel...`);
+            tryInsecure();
           }
         );
       });
@@ -267,6 +327,12 @@ export class BluetoothService {
     this.logSerial('SYSTEM', 'Requesting permissions and scanning for Bluetooth devices...');
 
     // 1. Ensure permissions and Bluetooth adapter are active
+    if (typeof window !== 'undefined' && window.AndroidBridge?.isBluetoothEnabled) {
+      if (!window.AndroidBridge.isBluetoothEnabled()) {
+        this.logSerial('SYSTEM', '⚠️ Bluetooth is turned OFF on your phone. Prompting to enable...');
+        window.AndroidBridge.requestEnableBluetooth?.();
+      }
+    }
     await permissionService.requestBluetoothPermission();
 
     if (typeof window !== 'undefined' && window.bluetoothSerial) {

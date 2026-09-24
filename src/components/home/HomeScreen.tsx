@@ -55,8 +55,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
 
   const handleQuickTestSms = async () => {
     if (!priorityContact) {
-      alert('Please add at least one emergency contact first in the Contacts tab.');
-      onNavigate('contacts');
+      setQuickSmsStatus('⚠️ Add an emergency contact first in the Contacts tab!');
+      setTimeout(() => {
+        setQuickSmsStatus(null);
+        onNavigate('contacts');
+      }, 1500);
       return;
     }
     setQuickSmsStatus('Sending direct test SMS...');
@@ -291,7 +294,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
                   </span>
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Grace Period: {activeProfile.gracePeriodSeconds}s • Tap to customize
+                  Grace: {activeProfile.gracePeriodSeconds}s • Interval: {activeProfile.repeatIntervalSeconds}s • Tap to customize
                 </div>
               </div>
             </div>
@@ -307,13 +310,26 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
         icon={<Send size={16} color="var(--theme-primary)" />}
         defaultExpanded={true}
       >
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
           <button
             onClick={handleQuickTestSms}
             className="btn btn-outline btn-sm"
-            style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}
+            style={{
+              padding: '11px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              borderRadius: 10,
+              background: 'rgba(255, 255, 255, 0.03)',
+            }}
           >
-            <Send size={13} /> {quickSmsStatus || 'Test SMS to Priority Contact'}
+            <Send size={14} color="var(--theme-primary)" />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {quickSmsStatus || 'Test Priority SMS'}
+            </span>
           </button>
           <button
             onClick={() => {
@@ -324,9 +340,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
               }
             }}
             className="btn btn-outline btn-sm"
-            style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{
+              padding: '11px 10px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              borderRadius: 10,
+              background: 'rgba(255, 255, 255, 0.03)',
+            }}
           >
-            <MessageSquare size={13} /> Open SMS App
+            <MessageSquare size={14} color="#60a5fa" />
+            <span style={{ whiteSpace: 'nowrap' }}>Open SMS App</span>
           </button>
         </div>
       </CollapsibleCard>

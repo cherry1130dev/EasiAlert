@@ -37,6 +37,7 @@ export const HardwareScreen: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [permStatus, setPermStatus] = useState<AppPermissionsStatus>(() => permissionService.getStatus());
   const [isRequestingPerms, setIsRequestingPerms] = useState(false);
+  const [connectingAddress, setConnectingAddress] = useState<string | null>(null);
 
   useEffect(() => {
     permissionService.checkAllPermissions();
@@ -60,7 +61,12 @@ export const HardwareScreen: React.FC = () => {
   };
 
   const handleConnect = async (dev: BluetoothDevice) => {
-    await connectToDevice(dev);
+    setConnectingAddress(dev.address || dev.name || 'connecting');
+    try {
+      await connectToDevice(dev);
+    } finally {
+      setConnectingAddress(null);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -105,10 +111,10 @@ export const HardwareScreen: React.FC = () => {
               <AlertTriangle size={20} color="#f59e0b" />
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fbbf24' }}>
-                  Required Hardware & System Permissions
+                  Required Hardware &amp; System Permissions
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  Bluetooth Connect/Scan, SMS, GPS, Contacts & Notifications
+                  Bluetooth Connect/Scan, SMS, GPS, Contacts &amp; Notifications
                 </div>
               </div>
             </div>
@@ -119,6 +125,42 @@ export const HardwareScreen: React.FC = () => {
               style={{ borderColor: '#f59e0b', color: '#fbbf24' }}
             >
               {isRequestingPerms ? 'Granting...' : 'Grant All Permissions'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bluetooth Radio Switch Warning */}
+      {permStatus.isBluetoothOn === false && (
+        <div
+          className="glass-panel"
+          style={{
+            padding: '14px 16px',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            background: 'rgba(239, 68, 68, 0.1)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Bluetooth size={20} color="#ef4444" />
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fca5a5' }}>
+                  Bluetooth Is Turned OFF
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Please turn on Bluetooth to connect your hardware trigger button
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                window.AndroidBridge?.requestEnableBluetooth?.();
+                setTimeout(() => permissionService.checkAllPermissions(), 1500);
+              }}
+              className="btn btn-sm"
+              style={{ background: '#ef4444', color: '#fff', border: 'none', fontWeight: 700 }}
+            >
+              Turn ON Bluetooth
             </button>
           </div>
         </div>
@@ -234,6 +276,8 @@ export const HardwareScreen: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {scannedDevices.map((dev) => {
             const isThisConnected = isConnected && pairedDevice?.address === dev.address;
+            const isThisDeviceConnecting = connectingAddress === (dev.address || dev.name);
+            const isAnyConnecting = connectionStatus === 'CONNECTING' || !!connectingAddress;
             return (
               <div
                 key={dev.address}
@@ -248,7 +292,7 @@ export const HardwareScreen: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Radio size={16} color={isThisConnected ? '#10b981' : '#64748b'} />
+                  <Radio size={16} color={isThisConnected ? '#10b981' : isThisDeviceConnecting ? 'var(--theme-primary)' : '#64748b'} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{dev.name}</div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -265,11 +309,24 @@ export const HardwareScreen: React.FC = () => {
                   ) : (
                     <button
                       onClick={() => handleConnect(dev)}
-                      disabled={connectionStatus === 'CONNECTING'}
+                      disabled={isAnyConnecting}
                       className="btn btn-primary btn-sm"
-                      style={{ fontSize: '0.75rem', padding: '5px 12px' }}
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '5px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        opacity: isAnyConnecting && !isThisDeviceConnecting ? 0.6 : 1,
+                      }}
                     >
-                      {connectionStatus === 'CONNECTING' ? 'Pairing...' : 'Connect'}
+                      {isThisDeviceConnecting ? (
+                        <>
+                          <RefreshCw size={12} className="animate-spin" /> Pairing...
+                        </>
+                      ) : (
+                        'Connect'
+                      )}
                     </button>
                   )}
                 </div>

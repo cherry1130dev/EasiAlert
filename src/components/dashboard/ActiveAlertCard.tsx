@@ -44,19 +44,20 @@ export const ActiveAlertCard: React.FC = () => {
         </div>
 
         {/* Iteration Badge */}
-        {activeSession.maxIterations > 1 && (
-          <div
-            style={{
-              padding: '3px 8px',
-              borderRadius: 6,
-              background: 'rgba(255, 255, 255, 0.1)',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-            }}
-          >
-            Iter {activeSession.currentIteration} / {activeSession.maxIterations === -1 ? '∞' : activeSession.maxIterations}
-          </div>
-        )}
+        <div
+          style={{
+            padding: '3px 8px',
+            borderRadius: 6,
+            background: 'rgba(255, 255, 255, 0.1)',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+          }}
+        >
+          {activeSession.maxIterations === 1
+            ? 'Single Blast (1x)'
+            : `Cycle ${activeSession.currentIteration} / ${activeSession.maxIterations === -1 ? '∞' : activeSession.maxIterations}`}
+        </div>
       </div>
 
       {/* Repeating Status or Next Repeat Countdown */}

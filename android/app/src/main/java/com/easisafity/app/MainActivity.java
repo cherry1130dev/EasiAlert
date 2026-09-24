@@ -33,28 +33,12 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        // Start Foreground Service to keep Bluetooth socket and emergency listener alive
-        try {
-            Intent serviceIntent = new Intent(this, EmergencyForegroundService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent);
-            } else {
-                startService(serviceIntent);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Check and prompt for permissions on startup
-        checkAndPromptPermissions();
     }
 
     @Override
     public void onResume() {
         super.onResume();
         applySystemBarsTheme();
-        checkAndPromptPermissions();
     }
 
     @Override

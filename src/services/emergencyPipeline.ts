@@ -97,6 +97,11 @@ export class EmergencyPipeline {
       return false;
     }
 
+    const maxIterations =
+      profile.maxRepeats === 1 || !profile.isRepeatEnabled
+        ? 1
+        : profile.maxRepeats;
+
     // Initialize New Emergency Session
     this.currentSession = {
       id: `sos-${Date.now()}`,
@@ -105,7 +110,7 @@ export class EmergencyPipeline {
       triggerSource: source,
       triggerDeviceName: deviceName || (source === 'MANUAL_APP' ? 'App Panic Button' : 'Hardware Sensor'),
       currentIteration: 1,
-      maxIterations: profile.isRepeatEnabled ? profile.maxRepeats : 1,
+      maxIterations,
       countdownRemaining: profile.gracePeriodSeconds,
       nextRepeatCountdown: 0,
       logs: [],
@@ -251,7 +256,9 @@ export class EmergencyPipeline {
     if (!this.currentSession) return;
 
     const isIndefinite = profile.maxRepeats === -1;
-    const hasMoreRepeats = profile.isRepeatEnabled && (isIndefinite || this.currentSession.currentIteration < profile.maxRepeats);
+    const maxIter = profile.maxRepeats ?? (profile.isRepeatEnabled ? 5 : 1);
+    const isRepeatActive = profile.isRepeatEnabled && (isIndefinite || maxIter > 1);
+    const hasMoreRepeats = isRepeatActive && (isIndefinite || this.currentSession.currentIteration < maxIter);
 
     if (hasMoreRepeats) {
       this.currentSession.status = 'WAITING_REPEAT';
@@ -263,7 +270,7 @@ export class EmergencyPipeline {
         'PENDING',
         undefined,
         undefined,
-        `Iteration ${this.currentSession.currentIteration}/${isIndefinite ? '∞' : profile.maxRepeats} finished.`,
+        `Iteration ${this.currentSession.currentIteration}/${isIndefinite ? '∞' : maxIter} finished.`,
         `Next repeat dispatch in ${profile.repeatIntervalSeconds} seconds.`
       );
 
@@ -287,7 +294,14 @@ export class EmergencyPipeline {
       }, 1000);
     } else {
       this.currentSession.status = 'COMPLETED';
-      this.addLog('SYSTEM', 'SENT', undefined, undefined, 'Emergency alert cycle completed.');
+      const count = this.currentSession.currentIteration;
+      this.addLog(
+        'SYSTEM',
+        'SENT',
+        undefined,
+        undefined,
+        `Emergency alert cycle completed (${count} alert cycle${count > 1 ? 's' : ''} sent).`
+      );
       this.notify();
     }
   }

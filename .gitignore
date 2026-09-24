@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Android Binaries & Secrets
+*.apk
+*.aab
+*.keystore
+*.jks
+keystore.properties
+apk/

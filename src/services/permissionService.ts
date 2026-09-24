@@ -10,6 +10,8 @@ export interface AppPermissionsStatus {
   notification: PermissionState;
   contacts: PermissionState;
   allGranted: boolean;
+  isBluetoothOn?: boolean;
+  isLocationOn?: boolean;
 }
 
 type PermissionListener = (status: AppPermissionsStatus) => void;
@@ -39,6 +41,8 @@ export class PermissionService {
     notification: 'prompt',
     contacts: 'prompt',
     allGranted: false,
+    isBluetoothOn: true,
+    isLocationOn: true,
   };
   private listeners: Set<PermissionListener> = new Set();
 
@@ -86,6 +90,8 @@ export class PermissionService {
         this.status.bluetooth = parsed.bluetooth ? 'granted' : 'prompt';
         this.status.notification = parsed.notifications ? 'granted' : 'prompt';
         this.status.allGranted = !!parsed.allGranted;
+        this.status.isBluetoothOn = parsed.isBluetoothOn !== undefined ? !!parsed.isBluetoothOn : true;
+        this.status.isLocationOn = parsed.isLocationOn !== undefined ? !!parsed.isLocationOn : true;
         this.notify();
         return this.getStatus();
       } catch (e) {
@@ -110,26 +116,13 @@ export class PermissionService {
    */
   public async requestBluetoothPermission(): Promise<boolean> {
     try {
-      // 1. Try BLE client initialization which triggers Android 12+ BLUETOOTH_CONNECT & BLUETOOTH_SCAN prompt
+      if (typeof window !== 'undefined' && window.AndroidBridge?.requestAllPermissions) {
+        window.AndroidBridge.requestAllPermissions();
+      }
       try {
         await BleClient.initialize();
       } catch (e) {
         console.warn('BleClient initialize note:', e);
-      }
-
-      // 2. Try native bluetoothSerial enable (prompts user to turn on Bluetooth if disabled)
-      if (typeof window !== 'undefined' && window.bluetoothSerial) {
-        await new Promise<void>((resolve) => {
-          window.bluetoothSerial?.isEnabled(
-            () => resolve(),
-            () => {
-              window.bluetoothSerial?.enable(
-                () => resolve(),
-                () => resolve()
-              );
-            }
-          );
-        });
       }
 
       this.status.bluetooth = 'granted';
@@ -144,20 +137,14 @@ export class PermissionService {
   }
 
   public async checkBluetoothPermission(): Promise<PermissionState> {
-    if (typeof window !== 'undefined' && window.bluetoothSerial) {
-      return new Promise<PermissionState>((resolve) => {
-        window.bluetoothSerial?.isEnabled(
-          () => {
-            this.status.bluetooth = 'granted';
-            resolve('granted');
-          },
-          () => {
-            // Might be disabled or permission pending
-            this.status.bluetooth = 'prompt';
-            resolve('prompt');
-          }
-        );
-      });
+    if (typeof window !== 'undefined' && window.AndroidBridge?.checkPermissionsStatus) {
+      try {
+        const raw = window.AndroidBridge.checkPermissionsStatus();
+        const parsed = JSON.parse(raw);
+        this.status.bluetooth = parsed.bluetooth ? 'granted' : 'prompt';
+        this.status.isBluetoothOn = parsed.isBluetoothOn !== undefined ? !!parsed.isBluetoothOn : true;
+        return this.status.bluetooth;
+      } catch {}
     }
     // Simulation / Web fallback
     this.status.bluetooth = 'granted';
@@ -237,23 +224,6 @@ export class PermissionService {
       return this.status.sms === 'granted';
     }
 
-    if (typeof window !== 'undefined' && window.sms?.requestPermission) {
-      return new Promise<boolean>((resolve) => {
-        window.sms?.requestPermission?.(
-          () => {
-            this.status.sms = 'granted';
-            this.notify();
-            resolve(true);
-          },
-          () => {
-            this.status.sms = 'denied';
-            this.notify();
-            resolve(false);
-          }
-        );
-      });
-    }
-
     this.status.sms = 'granted';
     this.notify();
     return true;
@@ -263,20 +233,6 @@ export class PermissionService {
     if (typeof window !== 'undefined' && window.AndroidBridge) {
       this.status.sms = window.AndroidBridge.hasSmsPermission() ? 'granted' : 'prompt';
       return this.status.sms;
-    }
-    if (typeof window !== 'undefined' && window.sms?.hasPermission) {
-      return new Promise<PermissionState>((resolve) => {
-        window.sms?.hasPermission?.(
-          (has) => {
-            this.status.sms = has ? 'granted' : 'prompt';
-            resolve(this.status.sms);
-          },
-          () => {
-            this.status.sms = 'prompt';
-            resolve('prompt');
-          }
-        );
-      });
     }
     this.status.sms = 'granted';
     return 'granted';

@@ -25,27 +25,14 @@ declare global {
       checkPermissionsStatus?: () => string;
       requestAllPermissions?: () => void;
       hasAllPermissions?: () => boolean;
+      isBluetoothEnabled?: () => boolean;
+      requestEnableBluetooth?: () => void;
+      isLocationEnabled?: () => boolean;
+      openLocationSettings?: () => void;
+      startEmergencyService?: () => void;
+      stopEmergencyService?: () => void;
     };
     onNativeContactPicked?: (name: string, phone: string) => void;
-    SMS?: {
-      sendSMS: (
-        address: string | string[],
-        text: string,
-        success: () => void,
-        failure: (err: unknown) => void
-      ) => void;
-    };
-    sms?: {
-      hasPermission?: (success: (hasPerm: boolean) => void, error: (err: unknown) => void) => void;
-      requestPermission?: (success: () => void, error: (err: unknown) => void) => void;
-      send: (
-        phone: string,
-        message: string,
-        options: { replaceLineBreaks: boolean; android: { intent: string } },
-        success: () => void,
-        error: (err: unknown) => void
-      ) => void;
-    };
   }
 }
 
@@ -88,31 +75,7 @@ export class SmsService {
       }
     }
 
-    // 2. Secondary: Cordova window.SMS.sendSMS (direct background SMS)
-    if (typeof window !== 'undefined' && window.SMS && typeof window.SMS.sendSMS === 'function') {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          window.SMS?.sendSMS(
-            cleanPhone,
-            message,
-            () => resolve(),
-            (err) => reject(err)
-          );
-        });
-
-        return {
-          success: true,
-          contactName: contact.name,
-          phoneNumber: cleanPhone,
-          message,
-          mode: 'NATIVE',
-        };
-      } catch (cordovaErr) {
-        console.warn('[SmsService] window.SMS error:', cordovaErr);
-      }
-    }
-
-    // 3. Browser / Simulation Fallback
+    // 2. Browser / Simulation Fallback
     console.log(`[SMS SIMULATION] To: ${contact.name} (${cleanPhone})\nContent: ${message}`);
     await new Promise((resolve) => setTimeout(resolve, 300));
 

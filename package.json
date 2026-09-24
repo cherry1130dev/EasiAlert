@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npm run build && npx cap sync android",
+    "apk:release": "npm run cap:sync && cd android && .\\gradlew.bat assembleRelease",
+    "apk:debug": "npm run cap:sync && cd android && .\\gradlew.bat assembleDebug"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.3.0",
@@ -17,7 +20,6 @@
     "@capacitor/geolocation": "^8.2.2",
     "cordova-plugin-bluetooth-serial": "^0.4.7",
     "cordova-plugin-call-number": "^1.0.1",
-    "cordova-plugin-sms": "^1.0.5",
     "lucide-react": "^1.47.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

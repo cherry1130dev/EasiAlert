@@ -1,19 +1,23 @@
-import React from 'react';
-import { Radio, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { Radio, ShieldAlert, ShieldCheck, Zap, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ActiveAlertCard } from './ActiveAlertCard';
 
 export const SosHeroCard: React.FC = () => {
   const { isArmed, toggleArmed, triggerEmergency, themeConfig } = useApp();
+  const [showDisarmedModal, setShowDisarmedModal] = useState(false);
 
   const handleSosPress = () => {
     if (!isArmed) {
-      if (window.confirm('The system is currently DISARMED. Would you like to ARM it and trigger the emergency test?')) {
-        toggleArmed();
-        triggerEmergency('MANUAL_APP', 'Dashboard SOS Test Button');
-      }
+      setShowDisarmedModal(true);
       return;
     }
+    triggerEmergency('MANUAL_APP', 'Dashboard SOS Test Button');
+  };
+
+  const handleArmAndTrigger = () => {
+    setShowDisarmedModal(false);
+    toggleArmed();
     triggerEmergency('MANUAL_APP', 'Dashboard SOS Test Button');
   };
 
@@ -118,6 +122,94 @@ export const SosHeroCard: React.FC = () => {
           </label>
         </div>
       </div>
+
+      {/* Disarmed Confirmation Modal */}
+      {showDisarmedModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              padding: 24,
+              borderRadius: 20,
+              background: 'linear-gradient(180deg, rgba(24, 28, 48, 0.98), rgba(14, 18, 32, 0.98))',
+              border: '1px solid rgba(245, 158, 11, 0.35)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.8), 0 0 25px rgba(245, 158, 11, 0.15)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#f59e0b',
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>
+                  System Is Disarmed
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  Emergency triggers are currently paused
+                </p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: 20 }}>
+              The system is currently <strong>DISARMED</strong>. Would you like to <strong>ARM</strong> it now and trigger the emergency countdown?
+            </p>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowDisarmedModal(false)}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArmAndTrigger}
+                style={{
+                  background: 'linear-gradient(135deg, #d97706, #f59e0b)',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.35)',
+                }}
+              >
+                ARM &amp; Trigger SOS
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

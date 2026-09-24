@@ -40,6 +40,7 @@ export const ContactsScreen: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [testStatus, setTestStatus] = useState<{ id: string; msg: string } | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
 
   // Phonebook modal states
   const [isPhonebookModalOpen, setIsPhonebookModalOpen] = useState(false);
@@ -522,9 +523,7 @@ export const ContactsScreen: React.FC = () => {
 
                 {/* Delete */}
                 <button
-                  onClick={() => {
-                    if (window.confirm(`Delete ${contact.name}?`)) deleteContact(contact.id);
-                  }}
+                  onClick={() => setContactToDelete(contact)}
                   style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }}
                 >
                   <Trash2 size={15} />
@@ -607,6 +606,97 @@ export const ContactsScreen: React.FC = () => {
                   No contacts found in phonebook matching &quot;{phonebookSearch}&quot;
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {contactToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 8, 18, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 16,
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              padding: 24,
+              borderRadius: 20,
+              background: 'linear-gradient(180deg, rgba(24, 28, 48, 0.98), rgba(14, 18, 32, 0.98))',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.8), 0 0 25px rgba(239, 68, 68, 0.15)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ef4444',
+                  flexShrink: 0,
+                }}
+              >
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>
+                  Delete Contact?
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  This emergency contact will be removed
+                </p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.5, marginBottom: 20 }}>
+              Are you sure you want to remove <strong style={{ color: '#fff' }}>{contactToDelete.name}</strong> ({contactToDelete.phone}) from your emergency contacts list?
+            </p>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setContactToDelete(null)}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteContact(contactToDelete.id);
+                  setContactToDelete(null);
+                }}
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
